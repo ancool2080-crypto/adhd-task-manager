@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>ゆるり — じぶんのペースのタスク管理</title>
+<title>Āta — じぶんのペースのタスク管理</title>
 <meta name="description" content="ADHDフレンドリー設計のタスク管理PWA。責めない、急かさない、忘れても大丈夫。">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#141210">
@@ -243,7 +243,7 @@ body {
 
 <header class="site-header">
   <div>
-    <h1>ゆるり</h1>
+    <h1>Āta</h1>
     <div class="tagline">責めない・急かさない・忘れてもだいじょうぶ</div>
   </div>
   <div class="sys-id">TASK-OS<br>REV.1.2</div>
@@ -350,7 +350,7 @@ body {
     <div class="setting-block">
       <h3>このアプリについて</h3>
       <p class="hint">
-        「ゆるり」は、成人ADHDに関する査読研究(実行機能の外在化・タスク細分化・If-Thenプランニング・シェイムフリー設計など)を参考に設計された個人用ツールです。医療機器ではなく、診断・治療を行うものではありません。生活への支障が続く場合は、心療内科・精神科などの専門医への相談をおすすめします。
+        「Āta」は、成人ADHDに関する査読研究(実行機能の外在化・タスク細分化・If-Thenプランニング・シェイムフリー設計など)を参考に設計された個人用ツールです。医療機器ではなく、診断・治療を行うものではありません。生活への支障が続く場合は、心療内科・精神科などの専門医への相談をおすすめします。
       </p>
     </div>
   </section>
@@ -415,7 +415,7 @@ body {
 <div id="toast"></div>
 
 <script>
-/* ================= ゆるり app.js ================= */
+/* ================= Āta app.js ================= */
 const PREFIX = 'yrr_';
 const CATS = ['当番','非番','週休','プライベート','家族','研修'];
 const KIND_WORDS = ['できた!すごい','いい一歩','ちゃんと進んでる','おつかれさま','その調子','えらい'];
@@ -616,7 +616,7 @@ function gcalUrl(t){
   return 'https://calendar.google.com/calendar/render?action=TEMPLATE'
     + '&text=' + encodeURIComponent(t.title)
     + '&dates=' + z(start) + '/' + z(end)
-    + '&details=' + encodeURIComponent('ゆるり から追加');
+    + '&details=' + encodeURIComponent('Āta から追加');
 }
 function openGcal(id){
   const t = getTask(id); if (!t) return;
@@ -880,7 +880,7 @@ function checkReminders(){
   store('tasks', tasks);
 }
 function remind(t, text){
-  notify('ゆるり', text);
+  notify('Āta', text);
   showBanner(text, t.id);
 }
 
@@ -959,7 +959,7 @@ setInterval(() => {
     const t = getTask(timerState.taskId);
     const name = t ? t.title : 'タスク';
     clearTimer();
-    notify('ゆるり', '「' + name + '」の時間が来ました。ここで区切っても、続けてもOK。');
+    notify('Āta', '「' + name + '」の時間が来ました。ここで区切っても、続けてもOK。');
     toast('時間になりました。おつかれさま');
     renderTasks();
   } else if (document.getElementById('focus-overlay').classList.contains('open')){
