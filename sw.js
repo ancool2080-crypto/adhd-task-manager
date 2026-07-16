@@ -1,4 +1,4 @@
-const CACHE = 'yururi-v5';
+const CACHE = 'yururi-v6';
 const FONT_CACHE = 'yururi-fonts-v1';
 const ASSETS = ['./', './index.html', './manifest.json', './offline.html'];
 
@@ -28,8 +28,18 @@ self.addEventListener('fetch', e => {
     );
     return;
   }
-  // 自サイト: Stale While Revalidate
+  // 自サイト: HTML(画面本体)はネットワーク優先、それ以外はStale While Revalidate
   if (url.origin === location.origin) {
+    const isHTML = e.request.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname.endsWith('/');
+    if (isHTML) {
+      e.respondWith(
+        fetch(e.request).then(res => {
+          if (res && res.ok) caches.open(CACHE).then(c => c.put(e.request, res.clone()));
+          return res;
+        }).catch(() => caches.open(CACHE).then(c => c.match(e.request).then(hit => hit || c.match('./offline.html'))))
+      );
+      return;
+    }
     e.respondWith(
       caches.open(CACHE).then(c => c.match(e.request).then(hit => {
         const net = fetch(e.request).then(res => {
