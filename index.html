@@ -179,6 +179,31 @@ body {
   position:fixed; width:10px; height:14px; border-radius:60% 40% 60% 40%;
   z-index:300; pointer-events:none;
 }
+/* ---------- focus mode ---------- */
+.focus-overlay {
+  display:none; position:fixed; inset:0; z-index:250;
+  background:var(--sage-dark); color:var(--warm-white);
+  padding:calc(20px + env(safe-area-inset-top,0px)) 24px calc(24px + env(safe-area-inset-bottom,0px));
+  overflow-y:auto;
+}
+.focus-overlay.open { display:flex; flex-direction:column; align-items:center; }
+.fo-close { align-self:flex-end; background:none; border:none; color:var(--mist); font-size:1rem; cursor:pointer; padding:8px; font-family:var(--font-sans); }
+.fo-label { font-size:.72rem; letter-spacing:.2em; color:var(--sage-light); margin-top:4px; }
+#fo-title { font-family:var(--font-serif); font-size:1.25rem; line-height:1.6; text-align:center; margin:10px 0 18px; max-width:480px; }
+.fo-ring-wrap { position:relative; width:220px; height:220px; margin:6px 0 14px; }
+.fo-ring-wrap svg { transform:rotate(-90deg); }
+#fo-remain { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:var(--font-serif); font-size:2.2rem; letter-spacing:.05em; }
+.fo-durations { display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap; justify-content:center; }
+.fo-durations button {
+  border:1.5px solid var(--sage-light); background:transparent; color:var(--warm-white);
+  border-radius:999px; padding:8px 16px; font-size:.85rem; cursor:pointer; font-family:var(--font-sans);
+}
+.fo-durations button:active { background:var(--sage); }
+#fo-subs { width:100%; max-width:480px; margin-bottom:18px; }
+#fo-subs .subtask { color:var(--cream); }
+#fo-subs .subtask.sub-done { color:var(--mist); }
+.fo-actions { display:flex; gap:10px; width:100%; max-width:480px; margin-top:auto; }
+.fo-actions .btn { flex:1; padding:15px; font-size:1rem; }
 /* ---------- toast ---------- */
 #toast {
   position:fixed; bottom:calc(90px + env(safe-area-inset-bottom,0px)); left:50%; transform:translateX(-50%) translateY(20px);
@@ -333,6 +358,31 @@ body {
   </div>
 </div>
 
+<div class="focus-overlay" id="focus-overlay">
+  <button class="fo-close" onclick="closeFocus()">そっと閉じる ✕</button>
+  <div class="fo-label">いまはこれだけ</div>
+  <div id="fo-title"></div>
+  <div class="fo-ring-wrap">
+    <svg width="220" height="220" viewBox="0 0 220 220">
+      <circle cx="110" cy="110" r="90" fill="none" stroke="rgba(253,250,245,0.15)" stroke-width="10"/>
+      <circle id="fo-ring-fg" cx="110" cy="110" r="90" fill="none" stroke="#EDD98A" stroke-width="10"
+        stroke-linecap="round" stroke-dasharray="565.49" stroke-dashoffset="565.49"/>
+    </svg>
+    <div id="fo-remain">—</div>
+  </div>
+  <div class="fo-durations">
+    <button onclick="startTimer(5)">5分</button>
+    <button onclick="startTimer(15)">15分</button>
+    <button onclick="startTimer(25)">25分</button>
+    <button onclick="startTimer(45)">45分</button>
+    <button onclick="stopTimer()">止める</button>
+  </div>
+  <div id="fo-subs"></div>
+  <div class="fo-actions">
+    <button class="btn terra" onclick="completeFocus()">できた!</button>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -450,6 +500,7 @@ function getTask(id){ return tasks.find(t => t.id === Number(id)); }
 function completeTask(id){
   const t = getTask(id);
   if (!t) return;
+  if (timerState && timerState.taskId === t.id) clearTimer();
   t.done = true;
   doneLog.unshift({ id: t.id, title: t.title, at: Date.now() });
   tasks = tasks.filter(x => x.id !== t.id);
@@ -611,6 +662,8 @@ function taskCard(t){
       '<span class="chip' + (t.due ? ' due-chip' : '') + '" onclick="openDueModal(' + t.id + ')">⏰ ' + (t.due ? fmtDue(t.due) : '期限') + '</span>' +
       '<span class="chip" onclick="openGcal(' + t.id + ')">📅 カレンダー</span>' +
       '<span class="chip" onclick="decompose(' + t.id + ')">🪄 分解</span>' +
+      '<span class="chip" onclick="openFocus(' + t.id + ')">🎯 集中</span>' +
+      (timerState && timerState.taskId === t.id ? '<span class="chip due-chip">⏱ 集中中</span>' : '') +
       (t.bucket === 'now'
         ? '<span class="chip" onclick="moveTask(' + t.id + ', \'later\')">→後で</span>'
         : '<span class="chip" onclick="moveTask(' + t.id + ', \'now\')">→今やる</span>') +
@@ -801,6 +854,89 @@ function remind(t, text){
   notify('ゆるり', text);
   showBanner(text, t.id);
 }
+
+/* ================= Focus mode + visual timer ================= */
+let timerState = load('timer', null);
+let currentFocusId = null;
+const RING_C = 565.49;
+
+function openFocus(id){
+  currentFocusId = Number(id);
+  renderFocus();
+  document.getElementById('focus-overlay').classList.add('open');
+}
+function closeFocus(){
+  document.getElementById('focus-overlay').classList.remove('open');
+  currentFocusId = null;
+  renderTasks();
+}
+function completeFocus(){
+  const id = currentFocusId;
+  document.getElementById('focus-overlay').classList.remove('open');
+  currentFocusId = null;
+  if (id) completeTask(id);
+}
+function renderFocus(){
+  const t = getTask(currentFocusId);
+  if (!t){ closeFocus(); return; }
+  document.getElementById('fo-title').textContent = t.title;
+  document.getElementById('fo-subs').innerHTML = t.subs.length
+    ? t.subs.map((s, i) =>
+        '<div class="subtask' + (s.done ? ' sub-done' : '') + '">' +
+          '<div class="checkbox' + (s.done ? ' checked' : '') + '" onclick="focusToggleSub(' + i + ')"></div>' +
+          '<span>' + esc(s.t) + '</span>' +
+        '</div>').join('')
+    : '';
+  updateRing();
+}
+function focusToggleSub(i){
+  toggleSub(currentFocusId, i);
+  renderFocus();
+}
+function startTimer(min){
+  if (!currentFocusId) return;
+  timerState = { taskId: currentFocusId, endAt: Date.now() + min*60*1000, total: min*60*1000 };
+  store('timer', timerState);
+  updateRing();
+  toast(min + '分、いっしょに測ります');
+}
+function stopTimer(){
+  clearTimer();
+  toast('タイマーを止めました。それでOK');
+}
+function clearTimer(){
+  timerState = null;
+  localStorage.removeItem(PREFIX + 'timer');
+  updateRing();
+}
+function updateRing(){
+  const fg = document.getElementById('fo-ring-fg');
+  const label = document.getElementById('fo-remain');
+  if (!fg || !label) return;
+  if (timerState && currentFocusId === timerState.taskId){
+    const remain = Math.max(0, timerState.endAt - Date.now());
+    fg.style.strokeDashoffset = String(RING_C * (1 - remain / timerState.total));
+    const m = Math.floor(remain / 60000);
+    const s = Math.floor((remain % 60000) / 1000);
+    label.textContent = m + ':' + String(s).padStart(2, '0');
+  } else {
+    fg.style.strokeDashoffset = String(RING_C);
+    label.textContent = '—';
+  }
+}
+setInterval(() => {
+  if (!timerState) return;
+  if (Date.now() >= timerState.endAt){
+    const t = getTask(timerState.taskId);
+    const name = t ? t.title : 'タスク';
+    clearTimer();
+    notify('ゆるり', '「' + name + '」の時間が来ました。ここで区切っても、続けてもOK。');
+    toast('時間になりました。おつかれさま');
+    renderTasks();
+  } else if (document.getElementById('focus-overlay').classList.contains('open')){
+    updateRing();
+  }
+}, 1000);
 
 /* ================= Settings ================= */
 function saveApiKey(){
