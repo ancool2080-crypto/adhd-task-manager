@@ -1,4 +1,4 @@
-const CACHE = 'yururi-v2';
+const CACHE = 'yururi-v3';
 const FONT_CACHE = 'yururi-fonts-v1';
 const ASSETS = ['./', './index.html', './manifest.json', './offline.html'];
 

@@ -41,6 +41,7 @@ html { font-size:16px; }
 body {
   font-family:var(--font-sans); background:var(--cream); color:var(--ink);
   min-height:100dvh; padding-bottom:calc(76px + env(safe-area-inset-bottom,0px));
+  overflow-x:hidden;
 }
 /* ---------- header ---------- */
 .site-header {
@@ -75,7 +76,7 @@ body {
 .capture-box label { font-family:var(--font-serif); color:var(--sage-dark); font-size:.95rem; display:block; margin-bottom:8px; letter-spacing:.08em; }
 .capture-row { display:flex; gap:8px; }
 .capture-row input {
-  flex:1; border:2px solid var(--mist); border-radius:var(--radius-md);
+  flex:1; min-width:0; border:2px solid var(--mist); border-radius:var(--radius-md);
   padding:14px; font-size:1rem; font-family:var(--font-sans); background:var(--cream); color:var(--ink);
 }
 .capture-row input:focus { outline:none; border-color:var(--sage); }
