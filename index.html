@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ゆるり — じぶんのペースのタスク管理</title>
+<meta name="description" content="ADHDフレンドリー設計のタスク管理PWA。責めない、急かさない、忘れても大丈夫。">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3D5740">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600;700&family=Zen+Kaku+Gothic+New:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cream:       #F7F3EC;
+  --warm-white:  #FDFAF5;
+  --sage:        #5C7A5F;
+  --sage-light:  #8AAE8D;
+  --sage-dark:   #3D5740;
+  --terra:       #C0714F;
+  --terra-light: #DDA08A;
+  --terra-pale:  #F5E6DF;
+  --ochre:       #C89A3E;
+  --ochre-light: #EDD98A;
+  --bark:        #6B4F3A;
+  --bark-light:  #A07A5F;
+  --ink:         #2A2118;
+  --ink-soft:    #4A3F35;
+  --mist:        #B8C4B0;
+  --shadow:      rgba(42,33,24,0.12);
+  --radius-sm:   8px;
+  --radius-md:   16px;
+  --radius-lg:   24px;
+  --radius-xl:   36px;
+  --font-serif:  'Shippori Mincho', serif;
+  --font-sans:   'Zen Kaku Gothic New', sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html { font-size:16px; }
+body {
+  font-family:var(--font-sans); background:var(--cream); color:var(--ink);
+  min-height:100dvh; padding-bottom:calc(76px + env(safe-area-inset-bottom,0px));
+}
+/* ---------- header ---------- */
+.site-header {
+  background:var(--sage-dark); color:var(--warm-white);
+  padding:max(20px, calc(16px + env(safe-area-inset-top,0px))) 20px 14px;
+}
+@media (display-mode: standalone) {
+  .site-header { padding-top:max(24px, calc(env(safe-area-inset-top,0px) + 12px)); }
+}
+.site-header h1 { font-family:var(--font-serif); font-size:1.25rem; font-weight:600; letter-spacing:.12em; }
+.site-header .tagline { font-size:.72rem; opacity:.75; margin-top:2px; letter-spacing:.05em; }
+/* ---------- gentle banner ---------- */
+#nudge-banner {
+  display:none; margin:12px 16px 0; padding:12px 14px;
+  background:var(--terra-pale); border-left:4px solid var(--terra);
+  border-radius:var(--radius-sm); font-size:.85rem; color:var(--ink-soft);
+}
+#nudge-banner .nb-actions { margin-top:8px; display:flex; gap:8px; }
+/* ---------- main / modules ---------- */
+.main { padding:16px; max-width:640px; margin:0 auto; }
+.module { display:none; animation:fadein .25s ease; }
+.module.active { display:block; }
+@keyframes fadein { from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;} }
+@media (prefers-reduced-motion: reduce) { *,*::before,*::after { animation:none!important; transition:none!important; } }
+.section-title { font-family:var(--font-serif); font-size:1.05rem; color:var(--sage-dark); margin:18px 0 10px; letter-spacing:.06em; }
+.hint { font-size:.75rem; color:var(--bark-light); line-height:1.6; }
+/* ---------- quick capture (signature) ---------- */
+.capture-box {
+  background:var(--warm-white); border-radius:var(--radius-lg);
+  box-shadow:0 4px 16px var(--shadow); padding:16px; margin-top:8px;
+}
+.capture-box label { font-family:var(--font-serif); color:var(--sage-dark); font-size:.95rem; display:block; margin-bottom:8px; letter-spacing:.08em; }
+.capture-row { display:flex; gap:8px; }
+.capture-row input {
+  flex:1; border:2px solid var(--mist); border-radius:var(--radius-md);
+  padding:14px; font-size:1rem; font-family:var(--font-sans); background:var(--cream); color:var(--ink);
+}
+.capture-row input:focus { outline:none; border-color:var(--sage); }
+.btn {
+  border:none; border-radius:var(--radius-md); padding:12px 16px; font-size:.9rem;
+  font-family:var(--font-sans); font-weight:500; cursor:pointer; color:var(--warm-white); background:var(--sage);
+}
+.btn:active { transform:scale(.97); }
+.btn.terra { background:var(--terra); }
+.btn.ghost { background:transparent; color:var(--sage-dark); border:1.5px solid var(--sage-light); }
+.btn.small { padding:7px 12px; font-size:.78rem; border-radius:var(--radius-sm); }
+.btn.bark { background:var(--bark-light); }
+/* ---------- cards / list items ---------- */
+.card {
+  background:var(--warm-white); border-radius:var(--radius-md);
+  box-shadow:0 2px 8px var(--shadow); padding:14px; margin-bottom:10px;
+}
+.card .title-row { display:flex; align-items:flex-start; gap:10px; }
+.card .t-text { flex:1; font-size:.95rem; line-height:1.5; word-break:break-word; }
+.card .t-text.done-text { color:var(--bark-light); text-decoration:line-through; }
+.meta-row { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; align-items:center; }
+.chip {
+  font-size:.7rem; padding:3px 10px; border-radius:999px; background:var(--cream);
+  color:var(--ink-soft); border:1px solid var(--mist); cursor:pointer;
+}
+.chip.active, .chip.cat-set { background:var(--sage-light); color:var(--warm-white); border-color:var(--sage-light); }
+.chip.due-chip { background:var(--ochre-light); border-color:var(--ochre-light); color:var(--ink); }
+.checkbox {
+  width:26px; height:26px; min-width:26px; border-radius:50%;
+  border:2px solid var(--sage-light); background:var(--warm-white); cursor:pointer; position:relative;
+}
+.checkbox.checked { background:var(--sage); border-color:var(--sage); }
+.checkbox.checked::after { content:'✓'; color:var(--warm-white); position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:.85rem; }
+.subtasks { margin-top:10px; padding-left:4px; border-left:2px solid var(--mist); }
+.subtask { display:flex; align-items:center; gap:8px; padding:5px 0 5px 8px; font-size:.85rem; color:var(--ink-soft); }
+.subtask .checkbox { width:20px; height:20px; min-width:20px; }
+.subtask.sub-done { color:var(--bark-light); text-decoration:line-through; }
+.empty-note {
+  text-align:center; padding:28px 16px; color:var(--bark-light); font-size:.85rem; line-height:1.8;
+  background:var(--warm-white); border-radius:var(--radius-md); border:1.5px dashed var(--mist);
+}
+/* ---------- todo buckets ---------- */
+.bucket-head { display:flex; align-items:center; gap:8px; margin:20px 0 10px; }
+.bucket-head .dot { width:10px; height:10px; border-radius:50%; }
+.bucket-head h2 { font-family:var(--font-serif); font-size:1rem; color:var(--sage-dark); letter-spacing:.08em; }
+.bucket-head .count { font-size:.72rem; color:var(--bark-light); }
+/* ---------- done log ---------- */
+.done-strip { background:var(--sage-dark); color:var(--warm-white); border-radius:var(--radius-md); padding:12px 16px; margin-top:20px; font-size:.85rem; display:flex; justify-content:space-between; align-items:center; }
+/* ---------- ASRS ---------- */
+.q-card { background:var(--warm-white); border-radius:var(--radius-md); padding:14px; margin-bottom:10px; box-shadow:0 2px 8px var(--shadow); }
+.q-card p { font-size:.88rem; line-height:1.6; margin-bottom:10px; }
+.q-num { font-family:var(--font-serif); color:var(--sage); font-size:.78rem; }
+.likert { display:flex; gap:4px; }
+.likert button {
+  flex:1; border:1.5px solid var(--mist); background:var(--cream); border-radius:var(--radius-sm);
+  padding:8px 2px; font-size:.62rem; line-height:1.3; cursor:pointer; color:var(--ink-soft); font-family:var(--font-sans);
+}
+.likert button.sel { background:var(--sage); color:var(--warm-white); border-color:var(--sage); }
+.result-box { background:var(--warm-white); border-radius:var(--radius-lg); padding:18px; margin-top:14px; box-shadow:0 4px 16px var(--shadow); }
+.result-box .score { font-family:var(--font-serif); font-size:2rem; color:var(--sage-dark); }
+.graph-wrap { background:var(--warm-white); border-radius:var(--radius-md); padding:14px; margin-top:14px; box-shadow:0 2px 8px var(--shadow); }
+/* ---------- settings ---------- */
+.setting-block { background:var(--warm-white); border-radius:var(--radius-md); padding:16px; margin-bottom:12px; box-shadow:0 2px 8px var(--shadow); }
+.setting-block h3 { font-family:var(--font-serif); font-size:.95rem; color:var(--sage-dark); margin-bottom:8px; }
+.setting-block input[type=password], .setting-block input[type=number], .setting-block input[type=text] {
+  width:100%; border:1.5px solid var(--mist); border-radius:var(--radius-sm); padding:10px; font-size:.9rem; background:var(--cream); margin-top:6px;
+}
+.status-tag { display:inline-block; font-size:.7rem; padding:2px 10px; border-radius:999px; margin-left:6px; }
+.status-tag.ok { background:var(--sage-light); color:var(--warm-white); }
+.status-tag.off { background:var(--mist); color:var(--ink-soft); }
+/* ---------- bottom nav ---------- */
+.nav-bar {
+  position:fixed; bottom:0; left:0; right:0; z-index:100;
+  background:var(--warm-white); border-top:1px solid var(--mist);
+  display:flex; padding-bottom:env(safe-area-inset-bottom,0px);
+}
+.nav-tab {
+  flex:1; border:none; background:none; padding:10px 2px 8px; cursor:pointer;
+  font-family:var(--font-sans); font-size:.62rem; color:var(--bark-light);
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+}
+.nav-tab .ico { font-size:1.25rem; line-height:1; }
+.nav-tab.active { color:var(--sage-dark); font-weight:700; }
+/* ---------- modal ---------- */
+.modal-overlay {
+  display:none; position:fixed; inset:0; background:rgba(42,33,24,.45); z-index:200;
+  align-items:flex-end; justify-content:center;
+}
+.modal-overlay.open { display:flex; }
+.modal {
+  background:var(--warm-white); border-radius:var(--radius-lg) var(--radius-lg) 0 0;
+  width:100%; max-width:640px; padding:20px 20px calc(20px + env(safe-area-inset-bottom,0px));
+  max-height:82dvh; overflow-y:auto;
+}
+.modal h3 { font-family:var(--font-serif); color:var(--sage-dark); margin-bottom:12px; font-size:1rem; }
+.modal input[type=datetime-local] { width:100%; border:1.5px solid var(--mist); border-radius:var(--radius-sm); padding:10px; font-size:.9rem; background:var(--cream); }
+.modal .m-actions { display:flex; gap:8px; margin-top:16px; }
+.chip-grid { display:flex; flex-wrap:wrap; gap:8px; }
+/* ---------- confetti ---------- */
+.leaf {
+  position:fixed; width:10px; height:14px; border-radius:60% 40% 60% 40%;
+  z-index:300; pointer-events:none;
+}
+/* ---------- toast ---------- */
+#toast {
+  position:fixed; bottom:calc(90px + env(safe-area-inset-bottom,0px)); left:50%; transform:translateX(-50%) translateY(20px);
+  background:var(--sage-dark); color:var(--warm-white); padding:10px 20px; border-radius:999px;
+  font-size:.85rem; opacity:0; transition:all .3s ease; z-index:400; pointer-events:none; white-space:nowrap;
+}
+#toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <h1>ゆるり</h1>
+  <div class="tagline">責めない・急かさない・忘れてもだいじょうぶ</div>
+</header>
+
+<div id="nudge-banner">
+  <div id="nb-text"></div>
+  <div class="nb-actions">
+    <button class="btn small" onclick="nudgeDone()">できた!</button>
+    <button class="btn small ghost" onclick="nudgeLater()">あとで(時間を選び直す)</button>
+  </div>
+</div>
+
+<main class="main">
+
+  <!-- ============ ホーム / Inbox ============ -->
+  <section id="mod-home" class="module active">
+    <div class="capture-box">
+      <label>とりあえずポケット</label>
+      <div class="capture-row">
+        <input id="capture-input" type="text" placeholder="頭に浮かんだこと、そのまま置いてOK" enterkeyhint="done">
+        <button class="btn" onclick="addInbox()">入れる</button>
+      </div>
+      <p class="hint" style="margin-top:8px;">分類はあとで。まず頭から出すだけでじゅうぶん。</p>
+    </div>
+
+    <h2 class="section-title">ポケットの中身</h2>
+    <div id="inbox-list"></div>
+
+    <div class="done-strip">
+      <span>きょうできたこと</span>
+      <span id="today-done-count" style="font-family:var(--font-serif); font-size:1.2rem;">0</span>
+    </div>
+  </section>
+
+  <!-- ============ やること ============ -->
+  <section id="mod-todo" class="module">
+    <div class="bucket-head"><span class="dot" style="background:var(--terra);"></span><h2>今やる</h2><span class="count" id="count-now"></span></div>
+    <div id="list-now"></div>
+    <div class="bucket-head"><span class="dot" style="background:var(--ochre);"></span><h2>後でやる</h2><span class="count" id="count-later"></span></div>
+    <div id="list-later"></div>
+    <p class="hint" style="margin-top:14px;">「今やる」は多くて3つまでが目安。迷ったら「後でやる」に置いてだいじょうぶ。</p>
+  </section>
+
+  <!-- ============ 買い物 ============ -->
+  <section id="mod-shop" class="module">
+    <div class="capture-box">
+      <label>買い物メモ</label>
+      <div class="capture-row">
+        <input id="shop-input" type="text" placeholder="例: スーパーに行ったら、牛乳を買う" enterkeyhint="done">
+        <button class="btn" onclick="addShop()">追加</button>
+      </div>
+      <p class="hint" style="margin-top:8px;">「〇〇に行ったら△△を買う」の形にすると、思い出しやすくなります(If-Thenプランニング)。</p>
+    </div>
+    <h2 class="section-title">リスト</h2>
+    <div id="shop-list"></div>
+    <button class="btn ghost small" style="margin-top:8px;" onclick="clearShopDone()">買えたものを片づける</button>
+  </section>
+
+  <!-- ============ セルフチェック ============ -->
+  <section id="mod-check" class="module">
+    <p class="hint" style="margin:6px 0 14px;">
+      過去6か月のご自身について、いちばん近いものを選んでください。全6問・1分ほどで終わります。<br>
+      ※ WHOのASRS-v1.1(Part A)を参考にした簡易セルフチェックです。<b>診断ではありません。</b>
+    </p>
+    <div id="asrs-questions"></div>
+    <button class="btn" style="width:100%;" onclick="submitAsrs()">結果を見る</button>
+    <div id="asrs-result"></div>
+    <div class="graph-wrap" id="asrs-graph-wrap" style="display:none;">
+      <h3 style="font-family:var(--font-serif); font-size:.9rem; color:var(--sage-dark); margin-bottom:8px;">これまでの推移</h3>
+      <div id="asrs-graph"></div>
+      <p class="hint" style="margin-top:8px;">点数は「いま感じている困りごとの度合い」の目安です。上下しても、それ自体に良い悪いはありません。</p>
+    </div>
+  </section>
+
+  <!-- ============ 設定 ============ -->
+  <section id="mod-settings" class="module">
+    <div class="setting-block">
+      <h3>通知 <span id="notif-status" class="status-tag off">未許可</span></h3>
+      <p class="hint">アプリを開いている間、予定の1時間前・15分前・5分前と、時間が過ぎた後もそっとお知らせします。</p>
+      <button class="btn small" style="margin-top:10px;" onclick="askNotifPermission()">通知を許可する</button>
+      <p class="hint" style="margin-top:10px;">確実な通知が必要な予定は、タスクの「📅」ボタンでGoogleカレンダーにも入れておくのがおすすめです。</p>
+      <label class="hint" style="display:block; margin-top:10px;">時間が過ぎた後のお知らせ間隔(分)</label>
+      <input type="number" id="nudge-interval" min="3" max="120" onchange="saveNudgeInterval()">
+    </div>
+    <div class="setting-block">
+      <h3>AIタスク分解 <span id="api-status" class="status-tag off">未設定</span></h3>
+      <p class="hint">Anthropic APIキーを入れると、大きなタスクを「5分で始められる小さな一歩」に自動分解できます。キーはこの端末のブラウザにのみ保存されます。</p>
+      <input type="password" id="api-key-input" placeholder="sk-ant-...">
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <button class="btn small" onclick="saveApiKey()">保存</button>
+        <button class="btn small ghost" onclick="clearApiKey()">削除</button>
+      </div>
+    </div>
+    <div class="setting-block">
+      <h3>データ</h3>
+      <p class="hint">データはすべてこの端末のブラウザ(localStorage)に保存されます。機種変更前にはバックアップを。</p>
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <button class="btn small bark" onclick="exportData()">バックアップ(JSON)</button>
+        <button class="btn small ghost" onclick="document.getElementById('import-file').click()">読み込み</button>
+        <input type="file" id="import-file" accept="application/json" style="display:none;" onchange="importData(event)">
+      </div>
+    </div>
+    <div class="setting-block">
+      <h3>このアプリについて</h3>
+      <p class="hint">
+        「ゆるり」は、成人ADHDに関する査読研究(実行機能の外在化・タスク細分化・If-Thenプランニング・シェイムフリー設計など)を参考に設計された個人用ツールです。医療機器ではなく、診断・治療を行うものではありません。生活への支障が続く場合は、心療内科・精神科などの専門医への相談をおすすめします。
+      </p>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ nav ============ -->
+<nav class="nav-bar">
+  <button class="nav-tab active" data-mod="home" onclick="showModule('home', this)"><span class="ico">🍃</span>ホーム</button>
+  <button class="nav-tab" data-mod="todo" onclick="showModule('todo', this)"><span class="ico">☘️</span>やること</button>
+  <button class="nav-tab" data-mod="shop" onclick="showModule('shop', this)"><span class="ico">🧺</span>買い物</button>
+  <button class="nav-tab" data-mod="check" onclick="showModule('check', this)"><span class="ico">🌿</span>チェック</button>
+  <button class="nav-tab" data-mod="settings" onclick="showModule('settings', this)"><span class="ico">🌰</span>設定</button>
+</nav>
+
+<!-- ============ modals ============ -->
+<div class="modal-overlay" id="modal-cat">
+  <div class="modal">
+    <h3>カテゴリを選ぶ</h3>
+    <div class="chip-grid" id="cat-chip-grid"></div>
+    <div class="m-actions"><button class="btn ghost" style="flex:1;" onclick="closeModal('modal-cat')">閉じる</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-due">
+  <div class="modal">
+    <h3>いつまでに?</h3>
+    <input type="datetime-local" id="due-input">
+    <div class="m-actions">
+      <button class="btn" style="flex:1;" onclick="saveDue()">決める</button>
+      <button class="btn ghost" style="flex:1;" onclick="removeDue()">期限なしにする</button>
+    </div>
+    <div class="m-actions"><button class="btn ghost" style="flex:1;" onclick="closeModal('modal-due')">閉じる</button></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ================= ゆるり app.js ================= */
+const PREFIX = 'yrr_';
+const CATS = ['当番','非番','週休','プライベート','家族','研修'];
+const KIND_WORDS = ['できた!すごい','いい一歩','ちゃんと進んでる','おつかれさま','その調子','えらい'];
+
+/* ---------- storage helpers ---------- */
+function load(key, fallback){ try { return JSON.parse(localStorage.getItem(PREFIX+key)) ?? fallback; } catch(e){ return fallback; } }
+function store(key, val){ localStorage.setItem(PREFIX+key, JSON.stringify(val)); }
+
+let inbox = load('inbox', []);
+let tasks = load('tasks', []);
+let shop  = load('shop', []);
+let asrsHistory = load('asrs', []);
+let doneLog = load('donelog', []);
+
+/* ---------- module nav ---------- */
+function showModule(name, btn){
+  document.querySelectorAll('.module').forEach(m => m.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('mod-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+
+/* ---------- toast ---------- */
+let toastTimer = null;
+function toast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+/* ---------- confetti (leaves) ---------- */
+function celebrate(){
+  const colors = ['#8AAE8D','#C0714F','#C89A3E','#B8C4B0'];
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduced) return;
+  for (let i = 0; i < 14; i++){
+    const leaf = document.createElement('div');
+    leaf.className = 'leaf';
+    leaf.style.background = colors[i % colors.length];
+    leaf.style.left = (30 + Math.random()*40) + 'vw';
+    leaf.style.top = '30vh';
+    document.body.appendChild(leaf);
+    const dx = (Math.random()-0.5) * 220;
+    const dy = 180 + Math.random()*220;
+    const rot = (Math.random()-0.5) * 540;
+    leaf.animate([
+      { transform:'translate(0,0) rotate(0deg)', opacity:1 },
+      { transform:'translate(' + dx + 'px,' + dy + 'px) rotate(' + rot + 'deg)', opacity:0 }
+    ], { duration: 900 + Math.random()*500, easing:'ease-out' }).onfinish = () => leaf.remove();
+  }
+}
+function kindWord(){ return KIND_WORDS[Math.floor(Math.random()*KIND_WORDS.length)]; }
+
+/* ================= Inbox ================= */
+function addInbox(){
+  const input = document.getElementById('capture-input');
+  const text = input.value.trim();
+  if (!text) return;
+  inbox.unshift({ id: Date.now(), text: text });
+  store('inbox', inbox);
+  input.value = '';
+  renderInbox();
+  toast('ポケットに入れました');
+}
+function inboxToTask(id, bucket){
+  const idx = inbox.findIndex(i => i.id === id);
+  if (idx < 0) return;
+  const item = inbox.splice(idx, 1)[0];
+  tasks.unshift({ id: item.id, title: item.text, cat: null, bucket: bucket, due: null,
+    subs: [], done: false, createdAt: Date.now(), notif: { s60:false, s15:false, s5:false, sdue:false, lastNudge:0 } });
+  store('inbox', inbox); store('tasks', tasks);
+  renderInbox(); renderTasks();
+  toast(bucket === 'now' ? '「今やる」に置きました' : '「後でやる」に置きました');
+}
+function inboxToShop(id){
+  const idx = inbox.findIndex(i => i.id === id);
+  if (idx < 0) return;
+  const item = inbox.splice(idx, 1)[0];
+  shop.unshift({ id: item.id, text: item.text, done: false });
+  store('inbox', inbox); store('shop', shop);
+  renderInbox(); renderShop();
+  toast('買い物メモに移しました');
+}
+function deleteInbox(id){
+  inbox = inbox.filter(i => i.id !== id);
+  store('inbox', inbox); renderInbox();
+}
+function renderInbox(){
+  const wrap = document.getElementById('inbox-list');
+  if (!inbox.length){
+    wrap.innerHTML = '<div class="empty-note">いまは空っぽ。<br>思いついたら上のポケットへどうぞ。</div>';
+    return;
+  }
+  wrap.innerHTML = inbox.map(i =>
+    '<div class="card">' +
+      '<div class="title-row"><div class="t-text">' + esc(i.text) + '</div></div>' +
+      '<div class="meta-row">' +
+        '<button class="btn small terra" onclick="inboxToTask(' + i.id + ', \'now\')">今やる</button>' +
+        '<button class="btn small" style="background:var(--ochre);" onclick="inboxToTask(' + i.id + ', \'later\')">後でやる</button>' +
+        '<button class="btn small bark" onclick="inboxToShop(' + i.id + ')">買い物</button>' +
+        '<button class="btn small ghost" onclick="deleteInbox(' + i.id + ')">消す</button>' +
+      '</div>' +
+    '</div>').join('');
+}
+
+/* ================= Tasks ================= */
+function getTask(id){ return tasks.find(t => t.id === Number(id)); }
+
+function completeTask(id){
+  const t = getTask(id);
+  if (!t) return;
+  t.done = true;
+  doneLog.unshift({ id: t.id, title: t.title, at: Date.now() });
+  tasks = tasks.filter(x => x.id !== t.id);
+  store('tasks', tasks); store('donelog', doneLog);
+  renderTasks(); renderDoneCount();
+  celebrate();
+  toast(kindWord());
+}
+function moveTask(id, bucket){
+  const t = getTask(id); if (!t) return;
+  t.bucket = bucket; store('tasks', tasks); renderTasks();
+}
+function deleteTask(id){
+  tasks = tasks.filter(x => x.id !== Number(id));
+  store('tasks', tasks); renderTasks();
+  toast('手放しました。それも立派な選択');
+}
+function toggleSub(taskId, subIdx){
+  const t = getTask(taskId); if (!t || !t.subs[subIdx]) return;
+  t.subs[subIdx].done = !t.subs[subIdx].done;
+  store('tasks', tasks); renderTasks();
+  if (t.subs[subIdx].done) toast(kindWord());
+}
+
+/* ---- category modal ---- */
+let modalTargetId = null;
+function openCatModal(id){
+  modalTargetId = Number(id);
+  const grid = document.getElementById('cat-chip-grid');
+  const t = getTask(modalTargetId);
+  grid.innerHTML = CATS.map(c =>
+    '<button class="chip' + (t && t.cat === c ? ' active' : '') + '" onclick="setCat(\'' + c + '\')">' + c + '</button>'
+  ).join('') + '<button class="chip" onclick="setCat(null)">なし</button>';
+  document.getElementById('modal-cat').classList.add('open');
+}
+function setCat(cat){
+  const t = getTask(modalTargetId);
+  if (t){ t.cat = cat; store('tasks', tasks); renderTasks(); }
+  closeModal('modal-cat');
+}
+
+/* ---- due modal ---- */
+function openDueModal(id){
+  modalTargetId = Number(id);
+  const t = getTask(modalTargetId);
+  const input = document.getElementById('due-input');
+  input.value = t && t.due ? toLocalInputValue(new Date(t.due)) : '';
+  document.getElementById('modal-due').classList.add('open');
+}
+function saveDue(){
+  const t = getTask(modalTargetId);
+  const v = document.getElementById('due-input').value;
+  if (t && v){
+    t.due = new Date(v).getTime();
+    t.notif = { s60:false, s15:false, s5:false, sdue:false, lastNudge:0 };
+    store('tasks', tasks); renderTasks();
+    toast('期限を決めました');
+  }
+  closeModal('modal-due');
+}
+function removeDue(){
+  const t = getTask(modalTargetId);
+  if (t){ t.due = null; store('tasks', tasks); renderTasks(); }
+  closeModal('modal-due');
+}
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+function toLocalInputValue(d){
+  const p = n => String(n).padStart(2,'0');
+  return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+function fmtDue(ms){
+  const d = new Date(ms);
+  const p = n => String(n).padStart(2,'0');
+  return (d.getMonth()+1) + '/' + d.getDate() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
+/* ---- Google Calendar link ---- */
+function gcalUrl(t){
+  if (!t.due) return null;
+  const start = new Date(t.due);
+  const end = new Date(t.due + 60*60*1000);
+  const z = d => d.toISOString().replace(/[-:]/g,'').replace(/\.\d{3}/,'');
+  return 'https://calendar.google.com/calendar/render?action=TEMPLATE'
+    + '&text=' + encodeURIComponent(t.title)
+    + '&dates=' + z(start) + '/' + z(end)
+    + '&details=' + encodeURIComponent('ゆるり から追加');
+}
+function openGcal(id){
+  const t = getTask(id); if (!t) return;
+  if (!t.due){ toast('先に期限(⏰)を決めるとカレンダーに入れられます'); return; }
+  window.open(gcalUrl(t), '_blank');
+}
+
+/* ---- AI decompose ---- */
+function getApiKey(){ return localStorage.getItem(PREFIX + 'apikey') || ''; }
+async function decompose(id){
+  const t = getTask(id); if (!t) return;
+  const key = getApiKey();
+  toast('小さな一歩に分けています…');
+  let steps = null;
+  if (key){
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': key,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 300,
+          messages: [{ role: 'user', content:
+            '次のタスクを、最初の一歩が5分以内で始められるように、3つの極小ステップに分解してください。各ステップは30文字以内の日本語。JSON配列のみを出力してください(例: ["...","...","..."])。タスク: ' + t.title }]
+        })
+      });
+      const data = await res.json();
+      const text = (data.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
+      const clean = text.replace(/```json|```/g, '').trim();
+      const arr = JSON.parse(clean);
+      if (Array.isArray(arr) && arr.length) steps = arr.slice(0, 4).map(String);
+    } catch(e) {
+      console.error('decompose error', e);
+    }
+  }
+  if (!steps){
+    steps = [
+      '道具や画面を「開くだけ」開く',
+      '最初のひとつに5分だけ手を付ける',
+      '終わったら、次の一歩をメモする'
+    ];
+    if (!key) toast('デモ分解です(設定でAPIキーを登録すると内容に合わせて分解します)');
+  }
+  t.subs = steps.map(s => ({ t: s, done: false }));
+  store('tasks', tasks); renderTasks();
+}
+
+/* ---- render ---- */
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function taskCard(t){
+  const subsHtml = t.subs.length
+    ? '<div class="subtasks">' + t.subs.map((s, i) =>
+        '<div class="subtask' + (s.done ? ' sub-done' : '') + '">' +
+          '<div class="checkbox' + (s.done ? ' checked' : '') + '" onclick="toggleSub(' + t.id + ',' + i + ')"></div>' +
+          '<span>' + esc(s.t) + '</span>' +
+        '</div>').join('') + '</div>'
+    : '';
+  return '<div class="card">' +
+    '<div class="title-row">' +
+      '<div class="checkbox" onclick="completeTask(' + t.id + ')"></div>' +
+      '<div class="t-text">' + esc(t.title) + '</div>' +
+    '</div>' +
+    subsHtml +
+    '<div class="meta-row">' +
+      '<span class="chip' + (t.cat ? ' cat-set' : '') + '" onclick="openCatModal(' + t.id + ')">' + (t.cat || 'カテゴリ') + '</span>' +
+      '<span class="chip' + (t.due ? ' due-chip' : '') + '" onclick="openDueModal(' + t.id + ')">⏰ ' + (t.due ? fmtDue(t.due) : '期限') + '</span>' +
+      '<span class="chip" onclick="openGcal(' + t.id + ')">📅 カレンダー</span>' +
+      '<span class="chip" onclick="decompose(' + t.id + ')">🪄 分解</span>' +
+      (t.bucket === 'now'
+        ? '<span class="chip" onclick="moveTask(' + t.id + ', \'later\')">→後で</span>'
+        : '<span class="chip" onclick="moveTask(' + t.id + ', \'now\')">→今やる</span>') +
+      '<span class="chip" onclick="deleteTask(' + t.id + ')">手放す</span>' +
+    '</div>' +
+  '</div>';
+}
+
+function renderTasks(){
+  const now = tasks.filter(t => t.bucket === 'now');
+  const later = tasks.filter(t => t.bucket === 'later');
+  document.getElementById('list-now').innerHTML = now.length
+    ? now.map(taskCard).join('')
+    : '<div class="empty-note">「今やる」は空いています。<br>ひとつだけ選んでみますか?</div>';
+  document.getElementById('list-later').innerHTML = later.length
+    ? later.map(taskCard).join('')
+    : '<div class="empty-note">「後でやる」も空。それでOK。</div>';
+  document.getElementById('count-now').textContent = now.length ? now.length + '件' : '';
+  document.getElementById('count-later').textContent = later.length ? later.length + '件' : '';
+}
+
+function renderDoneCount(){
+  const start = new Date(); start.setHours(0,0,0,0);
+  const n = doneLog.filter(d => d.at >= start.getTime()).length;
+  document.getElementById('today-done-count').textContent = n;
+}
+
+/* ================= Shopping ================= */
+function addShop(){
+  const input = document.getElementById('shop-input');
+  const text = input.value.trim();
+  if (!text) return;
+  shop.unshift({ id: Date.now(), text: text, done: false });
+  store('shop', shop);
+  input.value = '';
+  renderShop();
+}
+function toggleShop(id){
+  const s = shop.find(x => x.id === Number(id)); if (!s) return;
+  s.done = !s.done; store('shop', shop); renderShop();
+  if (s.done) toast(kindWord());
+}
+function clearShopDone(){
+  shop = shop.filter(s => !s.done);
+  store('shop', shop); renderShop();
+}
+function renderShop(){
+  const wrap = document.getElementById('shop-list');
+  if (!shop.length){
+    wrap.innerHTML = '<div class="empty-note">メモはまだありません。</div>';
+    return;
+  }
+  wrap.innerHTML = shop.map(s =>
+    '<div class="card"><div class="title-row">' +
+      '<div class="checkbox' + (s.done ? ' checked' : '') + '" onclick="toggleShop(' + s.id + ')"></div>' +
+      '<div class="t-text' + (s.done ? ' done-text' : '') + '">' + esc(s.text) + '</div>' +
+    '</div></div>').join('');
+}
+
+/* ================= ASRS self-check ================= */
+const ASRS_ITEMS = [
+  '仕事や作業の、最後の詰め(仕上げ)の段階でつまずくことが、どのくらいありますか?',
+  '段取りや順序立てが必要な作業を、整理して進めるのが難しいことが、どのくらいありますか?',
+  '約束や、やらなければならない用事を忘れてしまうことが、どのくらいありますか?',
+  'じっくり考える必要のある課題に取りかかるのを、避けたり先延ばしにしたりすることが、どのくらいありますか?',
+  '長時間座っていなければならない場面で、手足をそわそわ・もぞもぞ動かしてしまうことが、どのくらいありますか?',
+  'まるで何かに駆り立てられるように、過剰に活動的になってしまうことが、どのくらいありますか?'
+];
+const LIKERT = ['まったく<br>ない', 'めったに<br>ない', 'ときどき<br>ある', 'しばしば<br>ある', '非常に<br>しばしば'];
+let asrsAnswers = new Array(6).fill(null);
+
+function renderAsrsQuestions(){
+  const wrap = document.getElementById('asrs-questions');
+  wrap.innerHTML = ASRS_ITEMS.map((q, qi) =>
+    '<div class="q-card">' +
+      '<p><span class="q-num">Q' + (qi+1) + '</span><br>' + q + '</p>' +
+      '<div class="likert" id="lik-' + qi + '">' +
+        LIKERT.map((l, li) =>
+          '<button onclick="pickAsrs(' + qi + ',' + li + ')">' + l + '</button>').join('') +
+      '</div>' +
+    '</div>').join('');
+}
+function pickAsrs(qi, val){
+  asrsAnswers[qi] = val;
+  const btns = document.getElementById('lik-' + qi).querySelectorAll('button');
+  btns.forEach((b, i) => b.classList.toggle('sel', i === val));
+}
+function submitAsrs(){
+  if (asrsAnswers.some(a => a === null)){ toast('まだ答えていない質問があります'); return; }
+  const score = asrsAnswers.reduce((a, b) => a + b, 0);
+  asrsHistory.push({ date: Date.now(), score: score });
+  store('asrs', asrsHistory);
+  const high = score >= 15;
+  const box = document.getElementById('asrs-result');
+  box.innerHTML = '<div class="result-box">' +
+    '<div class="score">' + score + ' <span style="font-size:.9rem; color:var(--bark-light);">/ 24点</span></div>' +
+    '<p style="font-size:.85rem; line-height:1.8; margin-top:10px;">' +
+      (high
+        ? '目安となる値(15点)以上でした。これは「いま、日常の困りごとが多め」というサインであって、診断ではありません。同じような困りごとは、疲れ・睡眠不足・ストレス・他の不調でも起こります。<b>生活への支障が続く場合は、心療内科・精神科などの専門医に相談することをおすすめします。</b>'
+        : '目安となる値(15点)未満でした。これは診断ではなく、いまの困りごとの度合いの目安です。困りごとが続くときや強くなったときは、いつでも専門医に相談してだいじょうぶです。') +
+    '</p></div>';
+  asrsAnswers = new Array(6).fill(null);
+  renderAsrsQuestions();
+  renderAsrsGraph();
+  box.scrollIntoView({ behavior:'smooth' });
+}
+function renderAsrsGraph(){
+  if (!asrsHistory.length) return;
+  document.getElementById('asrs-graph-wrap').style.display = 'block';
+  const W = 300, H = 120, PAD = 20;
+  const data = asrsHistory.slice(-12);
+  const n = data.length;
+  const x = i => n === 1 ? W/2 : PAD + i * (W - PAD*2) / (n - 1);
+  const y = v => H - PAD - (v / 24) * (H - PAD*2);
+  const pts = data.map((d, i) => x(i) + ',' + y(d.score)).join(' ');
+  const cutY = y(15);
+  document.getElementById('asrs-graph').innerHTML =
+    '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%; height:auto;">' +
+      '<line x1="' + PAD + '" y1="' + cutY + '" x2="' + (W-PAD) + '" y2="' + cutY + '" stroke="#DDA08A" stroke-dasharray="4 4" stroke-width="1.5"/>' +
+      '<text x="' + (W-PAD) + '" y="' + (cutY - 4) + '" text-anchor="end" font-size="8" fill="#A07A5F">目安 15</text>' +
+      '<polyline points="' + pts + '" fill="none" stroke="#5C7A5F" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>' +
+      data.map((d, i) => '<circle cx="' + x(i) + '" cy="' + y(d.score) + '" r="3.5" fill="#3D5740"/>').join('') +
+    '</svg>';
+}
+
+/* ================= Reminders (in-app) ================= */
+function getNudgeInterval(){ return Number(localStorage.getItem(PREFIX + 'nudgemin')) || 10; }
+function saveNudgeInterval(){
+  const v = Number(document.getElementById('nudge-interval').value) || 10;
+  localStorage.setItem(PREFIX + 'nudgemin', String(v));
+  toast('お知らせ間隔を' + v + '分にしました');
+}
+function askNotifPermission(){
+  if (!('Notification' in window)){ toast('この環境は通知に対応していません'); return; }
+  Notification.requestPermission().then(updateNotifStatus);
+}
+function updateNotifStatus(){
+  const el = document.getElementById('notif-status');
+  const ok = ('Notification' in window) && Notification.permission === 'granted';
+  el.textContent = ok ? '許可済み' : '未許可';
+  el.className = 'status-tag ' + (ok ? 'ok' : 'off');
+}
+function notify(title, body){
+  if (('Notification' in window) && Notification.permission === 'granted'){
+    try { new Notification(title, { body: body, icon: 'icons/icon-192.png' }); } catch(e){}
+  }
+}
+let bannerTaskId = null;
+function showBanner(text, taskId){
+  bannerTaskId = taskId;
+  document.getElementById('nb-text').textContent = text;
+  document.getElementById('nudge-banner').style.display = 'block';
+}
+function hideBanner(){ document.getElementById('nudge-banner').style.display = 'none'; bannerTaskId = null; }
+function nudgeDone(){ if (bannerTaskId) completeTask(bannerTaskId); hideBanner(); }
+function nudgeLater(){
+  if (bannerTaskId) openDueModal(bannerTaskId);
+  hideBanner();
+}
+function checkReminders(){
+  const now = Date.now();
+  const nudgeMs = getNudgeInterval() * 60 * 1000;
+  tasks.forEach(t => {
+    if (!t.due || t.done) return;
+    if (!t.notif) t.notif = { s60:false, s15:false, s5:false, sdue:false, lastNudge:0 };
+    const diff = t.due - now;
+    if (diff > 0){
+      if (diff <= 60*60*1000 && diff > 15*60*1000 && !t.notif.s60){
+        t.notif.s60 = true; remind(t, 'あと1時間ほどで「' + t.title + '」の時間です。今のことを少しずつ区切っていきましょう。');
+      } else if (diff <= 15*60*1000 && diff > 5*60*1000 && !t.notif.s15){
+        t.notif.s15 = true; remind(t, 'あと15分で「' + t.title + '」。そろそろ切り替えの準備を。');
+      } else if (diff <= 5*60*1000 && !t.notif.s5){
+        t.notif.s5 = true; remind(t, 'あと5分で「' + t.title + '」です。');
+      }
+    } else {
+      if (!t.notif.sdue){
+        t.notif.sdue = true; t.notif.lastNudge = now;
+        remind(t, '「' + t.title + '」の時間になりました。');
+      } else if (now - (t.notif.lastNudge || 0) >= nudgeMs){
+        t.notif.lastNudge = now;
+        remind(t, '「' + t.title + '」の時間が過ぎています。今からでも、時間を選び直してもだいじょうぶ。');
+      }
+    }
+  });
+  store('tasks', tasks);
+}
+function remind(t, text){
+  notify('ゆるり', text);
+  showBanner(text, t.id);
+}
+
+/* ================= Settings ================= */
+function saveApiKey(){
+  const key = document.getElementById('api-key-input').value.trim();
+  if (!key.startsWith('sk-ant-')){ toast('APIキーはsk-ant-で始まります'); return; }
+  localStorage.setItem(PREFIX + 'apikey', key);
+  document.getElementById('api-key-input').value = '';
+  updateApiStatus();
+  toast('APIキーを保存しました');
+}
+function clearApiKey(){
+  localStorage.removeItem(PREFIX + 'apikey');
+  updateApiStatus();
+  toast('APIキーを削除しました');
+}
+function updateApiStatus(){
+  const el = document.getElementById('api-status');
+  const ok = !!getApiKey();
+  el.textContent = ok ? '設定済み' : '未設定';
+  el.className = 'status-tag ' + (ok ? 'ok' : 'off');
+}
+function exportData(){
+  const data = { inbox: inbox, tasks: tasks, shop: shop, asrs: asrsHistory, donelog: doneLog, exportedAt: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'yururi_backup_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function importData(ev){
+  const file = ev.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const d = JSON.parse(reader.result);
+      inbox = d.inbox || []; tasks = d.tasks || []; shop = d.shop || [];
+      asrsHistory = d.asrs || []; doneLog = d.donelog || [];
+      store('inbox', inbox); store('tasks', tasks); store('shop', shop);
+      store('asrs', asrsHistory); store('donelog', doneLog);
+      renderAll();
+      toast('読み込みました');
+    } catch(e){ toast('読み込みに失敗しました'); }
+  };
+  reader.readAsText(file);
+}
+
+/* ================= init ================= */
+function renderAll(){
+  renderInbox(); renderTasks(); renderShop(); renderDoneCount();
+  renderAsrsQuestions(); renderAsrsGraph();
+  updateApiStatus(); updateNotifStatus();
+  document.getElementById('nudge-interval').value = getNudgeInterval();
+}
+document.getElementById('capture-input').addEventListener('keydown', e => { if (e.key === 'Enter') addInbox(); });
+document.getElementById('shop-input').addEventListener('keydown', e => { if (e.key === 'Enter') addShop(); });
+renderAll();
+checkReminders();
+setInterval(checkReminders, 30 * 1000);
+
+if ('serviceWorker' in navigator){
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+</script>
+
+</body>
+</html>

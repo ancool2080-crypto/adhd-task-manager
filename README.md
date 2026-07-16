@@ -1,2 +1,12 @@
-# adhd-task-manager
-ADHD-friendly task manager PWA (evidence-based)
+# ゆるり — じぶんのペースのタスク管理
+
+ADHDフレンドリー設計のタスク管理PWA。エビデンス(実行機能の外在化・タスク細分化・If-Thenプランニング・シェイムフリー設計)に基づいて設計。
+
+- クイック入力(Inbox方式・分類は後回し)
+- ToDoは「今やる / 後でやる」の2択
+- AIタスク分解(Anthropic API・任意)
+- 買い物メモ(If-Then形式)
+- 階層的リマインダー(アプリ内)+ Googleカレンダー連携
+- ASRS-v1.1参考のセルフチェック(非医療機器・診断機能なし)
+
+データはすべて端末のlocalStorageに保存。
